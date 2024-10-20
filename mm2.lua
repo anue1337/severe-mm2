@@ -287,6 +287,21 @@ local function updateGunDrop()
     end
 end
 
+local function isIgnoredModel(model)
+    local ignoredModels = {
+        "ServerStatus",
+        "Lobby",
+        "ThrowingKnife"
+    }
+
+
+    for _, ignored in ipairs(ignoredModels) do
+        if getname(model) == ignored then
+            return true
+        end
+    end
+end
+
 local function mainLoop()
     while true do
         updateGunDrop()
@@ -296,39 +311,40 @@ local function mainLoop()
         local localPos3D = getPosition(localHumanoidRootPart)
         if localPos3D then
             for _, part in pairs(children) do
-                
-                if getname(part) == "EffectLoader" then
+
+				if getname(part) == "EffectLoader" then
                     continue
                 end
 
-                if getclassname(part) == "Model" and part ~= localPlayerChar then
-                    local humanoidRootPart = findfirstchild(part, "HumanoidRootPart")
-                    local humanoid = findfirstchild(part, "Humanoid")
-                    local targetPart = humanoidRootPart or humanoid
-                    if humanoid then
-                        local parentName = getname(part)
-                        local health = getHealth(humanoid)
-                        local maxHealth = getMaxHealth(humanoid)
-                        local isGun = gunPlayers[parentName] or false
-                        local isKnife = knifePlayers[parentName] or false
-                        local isGunDrop = findfirstchild(part, "GunDrop") ~= nil
-                        currentParts[part] = true
-                        if not espElements[part] then
-                            espElements[part] = createESP()
+                if not isIgnoredModel(part) then
+                    if getclassname(part) == "Model" and part ~= localPlayerChar then
+                        local humanoidRootPart = findfirstchild(part, "HumanoidRootPart")
+                        local humanoid = findfirstchild(part, "Humanoid")
+                        local targetPart = humanoidRootPart or humanoid
+                        if humanoid then
+                            local parentName = getname(part)
+                            local health = getHealth(humanoid)
+                            local maxHealth = getMaxHealth(humanoid)
+                            local isGun = gunPlayers[parentName] or false
+                            local isKnife = knifePlayers[parentName] or false
+                            local isGunDrop = findfirstchild(part, "GunDrop") ~= nil
+                            currentParts[part] = true
+                            if not espElements[part] then
+                                espElements[part] = createESP()
+                            end
+                            updateESP(targetPart, espElements[part], parentName, health, maxHealth, isGun, isKnife, isGunDrop)
                         end
-                        updateESP(targetPart, espElements[part], parentName, health, maxHealth, isGun, isKnife, isGunDrop)
-                    end
-                elseif getclassname(part) == "Model" and findfirstchild(part, "GunDrop") then
-                    
-                    local gunDropPart = findfirstchild(part, "GunDrop")
-                    if gunDropPart then
-                        local gunDropESP = createESP()
-                        local gunDropPosition = getPosition(gunDropPart)
-                        if gunDropPosition then
-                            local pos2D, onScreen = worldtoscreenpoint({gunDropPosition.x, gunDropPosition.y, gunDropPosition.z})
-                            if onScreen then
-                                local distance = calculateDistance(gunDropPosition, localPos3D)
-                                updateESP(gunDropPart, gunDropESP, "GunDrop", 0, 0, false, false, true)
+                    elseif getclassname(part) == "Model" and findfirstchild(part, "GunDrop") then
+                        local gunDropPart = findfirstchild(part, "GunDrop")
+                        if gunDropPart then
+                            local gunDropESP = createESP()
+                            local gunDropPosition = getPosition(gunDropPart)
+                            if gunDropPosition then
+                                local pos2D, onScreen = worldtoscreenpoint({gunDropPosition.x, gunDropPosition.y, gunDropPosition.z})
+                                if onScreen then
+                                    local distance = calculateDistance(gunDropPosition, localPos3D)
+                                    updateESP(gunDropPart, gunDropESP, "GunDrop", 0, 0, false, false, true)
+                                end
                             end
                         end
                     end
@@ -348,6 +364,8 @@ local function mainLoop()
         wait(0.001)
     end
 end
+
+
 
 spawn(checkPlayersForItems)
 spawn(cacheLoop)
