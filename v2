@@ -1,0 +1,358 @@
+local Options = {
+    ["Render Distance"] = 400,
+    ["Box"] = {
+        ["Color"] = {255, 255, 255},
+        ["Thickness"] = 1.5,
+        ["Transparency"] = 1
+    },
+    ["Outline"] = {
+        ["Color"] = {0, 0, 0},
+        ["Thickness"] = 0.5,
+        ["Transparency"] = 1
+    },
+    ["Name"] = {
+        ["Color"] = {255, 255, 255},
+        ["Font"] = 5
+    },
+    ["Distance"] = {
+        ["Color"] = {255, 255, 255},
+        ["Font"] = 5
+    }
+}
+
+local WEAPON_CLASSES = {
+    SHERIFF = "Gun",
+    MURDERER = "Knife"
+}
+
+local EXCLUDED_MODELS = {
+    ["ThrowingKnife"] = true,
+    ["ServerStatus"] = true,
+    ["Lobby"] = true,
+    ["EffectLoader"] = true
+}
+
+
+local KnifeText = Drawing.new("Text")
+KnifeText.Text = ""
+KnifeText.Visible = false
+KnifeText.Color = {255, 0, 0}
+KnifeText.Size = 20
+KnifeText.Center = true
+KnifeText.Outline = true
+
+local CooldownText = Drawing.new("Text")
+CooldownText.Text = "COOLDOWN"
+CooldownText.Visible = false
+CooldownText.Color = {255, 255, 255}
+CooldownText.Size = 20
+CooldownText.Center = true
+CooldownText.Outline = true
+
+local GunText = Drawing.new("Text")
+GunText.Text = ""
+GunText.Visible = false
+GunText.Color = {0, 0, 255}
+GunText.Size = 20
+GunText.Center = true
+GunText.Outline = true
+
+
+local screenWidth = 1920
+local screenHeight = 1080
+local offsetY = 100
+
+KnifeText.Position = {screenWidth / 2, offsetY}
+CooldownText.Position = {screenWidth / 2, offsetY}
+GunText.Position = {screenWidth / 2, offsetY + 40}
+
+local Drawings = {}
+local TrackedEntities = {}
+local Workspace = findfirstchildofclass(Game, "Workspace")
+local Camera = findfirstchild(Workspace, "Camera")
+
+local function CalculateDistance(Position1, Position2)
+    return math.sqrt((Position1.x - Position2.x)^2 + (Position1.y - Position2.y)^2 + (Position1.z - Position2.z)^2)
+end
+
+local function GetPlayerRole(Entity)
+    local modelName = getname(Entity)
+    if EXCLUDED_MODELS[modelName] then return nil end
+
+
+    for _, Tool in ipairs(getchildren(Entity)) do
+        local toolName = getname(Tool)
+        if toolName == WEAPON_CLASSES.SHERIFF then
+            return "SHERIFF", modelName
+        elseif toolName == WEAPON_CLASSES.MURDERER then
+            return "MURDERER", modelName
+        end
+    end
+
+
+    local Players = findfirstchildofclass(Game, "Players")
+    if Players then
+        local Player = findfirstchild(Players, modelName)
+        if Player then
+            local Backpack = findfirstchild(Player, "Backpack")
+            if Backpack then
+                for _, Tool in ipairs(getchildren(Backpack)) do
+                    local toolName = getname(Tool)
+                    if toolName == WEAPON_CLASSES.SHERIFF then
+                        return "SHERIFF", modelName
+                    elseif toolName == WEAPON_CLASSES.MURDERER then
+                        return "MURDERER", modelName
+                    end
+                end
+            end
+        end
+    end
+    
+    return nil, modelName
+end
+
+function AddEntity(Entity, isGunDrop)
+    if Drawings[Entity] then return end
+
+    local Box = Drawing.new("Square")
+    Box.Visible = true
+    Box.Color = Options.Box.Color
+    Box.Thickness = Options.Box.Thickness
+    Box.Transparency = Options.Box.Transparency
+
+    local Outline = Drawing.new("Square")
+    Outline.Visible = true
+    Outline.Color = Options.Outline.Color
+    Outline.Thickness = Options.Outline.Thickness
+    Outline.Transparency = Options.Outline.Transparency
+
+    local Name = Drawing.new("Text")
+    Name.Visible = true
+    Name.Color = Options.Name.Color
+    Name.Size = 12
+    Name.Font = Options.Name.Font
+    Name.Outline = true
+
+    local Distance = Drawing.new("Text")
+    Distance.Visible = not isGunDrop
+    Distance.Color = Options.Distance.Color
+    Distance.Size = 12
+    Distance.Font = Options.Distance.Font
+    Distance.Outline = true
+
+    Drawings[Entity] = {
+        Box = Box,
+        Outline = Outline,
+        Name = Name,
+        Distance = Distance,
+        IsGunDrop = isGunDrop
+    }
+    table.insert(TrackedEntities, Entity)
+end
+
+spawn(function()
+    while wait() do
+        local CameraPos = getposition(Camera)
+        local hasMurderer = false
+        local hasSheriff = false
+
+        for I = #TrackedEntities, 1, -1 do
+            local Entity = TrackedEntities[I]
+            local EntityDrawings = Drawings[Entity]
+            local Box = EntityDrawings.Box
+            local Outline = EntityDrawings.Outline
+            local Name = EntityDrawings.Name
+            local Distance = EntityDrawings.Distance
+            local IsGunDrop = EntityDrawings.IsGunDrop
+
+
+            if IsGunDrop then
+                local GunDropPart = findfirstchild(Entity, "GunDrop")
+                local RootPos = GunDropPart and getposition(GunDropPart)
+
+                if not Entity or not isdescendantof(Entity, Workspace) or not GunDropPart then
+                    Box:Remove()
+                    Outline:Remove()
+                    Name:Remove()
+                    Distance:Remove()
+                    Drawings[Entity] = nil
+                    table.remove(TrackedEntities, I)
+                else
+                    local DistanceToCamera = CalculateDistance(CameraPos, RootPos)
+                    Name.Text = "Gun Dropped"
+                    
+                    if DistanceToCamera > Options["Render Distance"] then
+                        Box.Visible = false
+                        Outline.Visible = false
+                        Name.Visible = false
+                    else
+                        local Pos = getposition(GunDropPart)
+                        local ScreenPoint, OnScreen = WorldToScreenPoint({Pos.x, Pos.y, Pos.z})
+                        if OnScreen then
+                            Box.Position = {ScreenPoint.x - 15, ScreenPoint.y - 15}
+                            Box.Size = {30, 30}
+                            Outline.Position = {ScreenPoint.x - 16, ScreenPoint.y - 16}
+                            Outline.Size = {32, 32}
+                            Name.Position = {ScreenPoint.x - Name.TextBounds.x/2, ScreenPoint.y - 30}
+
+                            Box.Visible = true
+                            Outline.Visible = true
+                            Name.Visible = true
+                        else
+                            Box.Visible = false
+                            Outline.Visible = false
+                            Name.Visible = false
+                        end
+                    end
+                end
+
+            else
+                local HumanoidRootPart = findfirstchild(Entity, "HumanoidRootPart")
+                local Head = findfirstchild(Entity, "Head")
+                local RootPos = HumanoidRootPart and getposition(HumanoidRootPart)
+
+                if not Entity or not isdescendantof(Entity, Workspace) or not HumanoidRootPart then
+                    Box:Remove()
+                    Outline:Remove()
+                    Name:Remove()
+                    Distance:Remove()
+                    Drawings[Entity] = nil
+                    table.remove(TrackedEntities, I)
+                else
+                    local DistanceToPlayer = CalculateDistance(CameraPos, RootPos)
+                    local Role, PlayerName = GetPlayerRole(Entity)
+                    
+
+                    if Role == "MURDERER" then
+                        KnifeText.Text = "MURDERER: " .. PlayerName
+                        KnifeText.Visible = true
+                        hasMurderer = true
+                    elseif Role == "SHERIFF" then
+                        GunText.Text = "SHERIFF: " .. PlayerName
+                        GunText.Visible = true
+                        hasSheriff = true
+                    end
+                    
+                    if not Role then
+                        Box:Remove()
+                        Outline:Remove()
+                        Name:Remove()
+                        Distance:Remove()
+                        Drawings[Entity] = nil
+                        table.remove(TrackedEntities, I)
+                    else
+                        Name.Text = Role:upper()
+                        
+                        if DistanceToPlayer > Options["Render Distance"] then
+                            Box.Visible = false
+                            Outline.Visible = false
+                            Name.Visible = false
+                            Distance.Visible = false
+                        else
+                            if Head then
+
+                                local MinX, MinY, MinZ = math.huge, math.huge, math.huge
+                                local MaxX, MaxY, MaxZ = -math.huge, -math.huge, -math.huge
+
+                                for _, Part in ipairs(getchildren(Entity)) do
+                                    if (getclassname(Part) == "Part" or getclassname(Part) == "MeshPart") and getname(Part) ~= "hitbox" then
+                                        local Pos = getposition(Part)
+                                        local Size = getsize(Part)
+                                        if Pos and Size then
+                                            MinX = math.min(MinX, Pos.x - Size.x / 2)
+                                            MinY = math.min(MinY, Pos.y - Size.y / 2)
+                                            MinZ = math.min(MinZ, Pos.z - Size.z / 2)
+                                            MaxX = math.max(MaxX, Pos.x + Size.x / 2)
+                                            MaxY = math.max(MaxY, Pos.y + Size.y / 2)
+                                            MaxZ = math.max(MaxZ, Pos.z + Size.z / 2)
+                                        end
+                                    end
+                                end
+
+                                local Corners = {
+                                    {MinX, MinY, MinZ}, {MaxX, MinY, MinZ},
+                                    {MinX, MaxY, MinZ}, {MaxX, MaxY, MinZ},
+                                    {MinX, MinY, MaxZ}, {MaxX, MinY, MaxZ},
+                                    {MinX, MaxY, MaxZ}, {MaxX, MaxY, MaxZ}
+                                }
+
+                                local ScreenPoints = {}
+                                for _, Corner in ipairs(Corners) do
+                                    local ScreenPoint, OnScreen = WorldToScreenPoint(Corner)
+                                    if OnScreen then
+                                        table.insert(ScreenPoints, ScreenPoint)
+                                    end
+                                end
+
+                                if #ScreenPoints > 0 then
+                                    local MinX2, MinY2 = math.huge, math.huge
+                                    local MaxX2, MaxY2 = -math.huge, -math.huge
+
+                                    for _, Point in ipairs(ScreenPoints) do
+                                        MinX2 = math.min(MinX2, Point.x)
+                                        MinY2 = math.min(MinY2, Point.y)
+                                        MaxX2 = math.max(MaxX2, Point.x)
+                                        MaxY2 = math.max(MaxY2, Point.y)
+                                    end
+
+                                    local Width = MaxX2 - MinX2
+                                    local Height = MaxY2 - MinY2
+
+                                    Box.Position = {MinX2, MinY2}
+                                    Box.Size = {Width, Height}
+                                    Outline.Position = {MinX2 - 1, MinY2 - 1}
+                                    Outline.Size = {Width + 2, Height + 2}
+                                    Name.Position = {MinX2 + Width/2 - Name.TextBounds.x/2, MinY2 - 15}
+                                    Distance.Position = {MinX2 + Width/2 - Distance.TextBounds.x/2, MaxY2 + 5}
+                                    Distance.Text = string.format("%.1f m", DistanceToPlayer)
+
+                                    Box.Visible = true
+                                    Outline.Visible = true
+                                    Name.Visible = true
+                                    Distance.Visible = true
+                                else
+                                    Box.Visible = false
+                                    Outline.Visible = false
+                                    Name.Visible = false
+                                    Distance.Visible = false
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+
+        CooldownText.Visible = not (hasMurderer or hasSheriff)
+        if not hasMurderer then KnifeText.Visible = false end
+        if not hasSheriff then GunText.Visible = false end
+    end
+end)
+
+spawn(function()
+    while wait(1) do
+
+        for _, Entity in ipairs(getchildren(Workspace)) do
+            if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
+                if findfirstchild(Entity, "GunDrop") then
+                    AddEntity(Entity, true)
+                end
+            end
+        end
+
+
+        for _, Entity in ipairs(getchildren(Workspace)) do
+            if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
+                local Hrp = findfirstchild(Entity, "HumanoidRootPart")
+                local Head = findfirstchild(Entity, "Head")
+                if Hrp and Head then
+                    local Role = GetPlayerRole(Entity)
+                    if Role and not Drawings[Entity] then
+                        AddEntity(Entity, false)
+                    end
+                end
+            end
+        end
+    end
+end)
