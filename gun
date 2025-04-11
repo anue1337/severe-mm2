@@ -1,0 +1,157 @@
+local Options = {
+    ["Render Distance"] = 400,
+    ["Box"] = {
+        ["Color"] = {255, 255, 255},
+        ["Thickness"] = 1.5,
+        ["Transparency"] = 1
+    },
+    ["Outline"] = {
+        ["Color"] = {0, 0, 0},
+        ["Thickness"] = 0.5,
+        ["Transparency"] = 1
+    },
+    ["Name"] = {
+        ["Color"] = {255, 255, 255},
+        ["Font"] = 5
+    }
+}
+
+local Drawings = {}
+local TrackedEntities = {}
+local Workspace = findfirstchildofclass(Game, "Workspace")
+local Camera = findfirstchild(Workspace, "Camera")
+
+local function CalculateDistance(Position1, Position2)
+    return math.sqrt((Position1.x - Position2.x)^2 + (Position1.y - Position2.y)^2 + (Position1.z - Position2.z)^2)
+end
+
+function AddEntity(Entity)
+    if Drawings[Entity] then return end
+
+    local Box = Drawing.new("Square")
+    Box.Visible = true
+    Box.Color = Options.Box.Color
+    Box.Thickness = Options.Box.Thickness
+    Box.Transparency = Options.Box.Transparency
+
+    local Outline = Drawing.new("Square")
+    Outline.Visible = true
+    Outline.Color = Options.Outline.Color
+    Outline.Thickness = Options.Outline.Thickness
+    Outline.Transparency = Options.Outline.Transparency
+
+    local Name = Drawing.new("Text")
+    Name.Visible = true
+    Name.Color = Options.Name.Color
+    Name.Size = 12
+    Name.Font = Options.Name.Font
+    Name.Outline = true
+    Name.Text = "Gun Dropped"
+
+    Drawings[Entity] = {Box = Box, Outline = Outline, Name = Name}
+    table.insert(TrackedEntities, Entity)
+end
+
+spawn(function()
+    while wait() do
+        local CameraPos = getposition(Camera)
+
+        for I = #TrackedEntities, 1, -1 do
+            local Entity = TrackedEntities[I]
+            local EntityDrawings = Drawings[Entity]
+            local Box = EntityDrawings.Box
+            local Outline = EntityDrawings.Outline
+            local Name = EntityDrawings.Name
+
+            local GunDropPart = findfirstchild(Entity, "GunDrop")
+            local RootPos = GunDropPart and getposition(GunDropPart)
+
+            if not Entity or not isdescendantof(Entity, Workspace) or not GunDropPart then
+                if Box then Box:Remove() end
+                if Outline then Outline:Remove() end
+                if Name then Name:Remove() end
+                Drawings[Entity] = nil
+                table.remove(TrackedEntities, I)
+            else
+                local Distance = CalculateDistance(CameraPos, RootPos)
+                if Distance > Options["Render Distance"] then
+                    Box.Visible = false
+                    Outline.Visible = false
+                    Name.Visible = false
+                else
+                    local Pos = getposition(GunDropPart)
+                    local Size = getsize(GunDropPart)
+
+                    local MinX = Pos.x - Size.x/2
+                    local MinY = Pos.y - Size.y/2
+                    local MinZ = Pos.z - Size.z/2
+                    local MaxX = Pos.x + Size.x/2
+                    local MaxY = Pos.y + Size.y/2
+                    local MaxZ = Pos.z + Size.z/2
+
+                    local Corners = {
+                        {MinX, MinY, MinZ}, {MaxX, MinY, MinZ},
+                        {MinX, MaxY, MinZ}, {MaxX, MaxY, MinZ},
+                        {MinX, MinY, MaxZ}, {MaxX, MinY, MaxZ},
+                        {MinX, MaxY, MaxZ}, {MaxX, MaxY, MaxZ}
+                    }
+
+                    local ScreenPoints = {}
+                    for _, Corner in ipairs(Corners) do
+                        local ScreenPoint, OnScreen = WorldToScreenPoint(Corner)
+                        if OnScreen then
+                            table.insert(ScreenPoints, ScreenPoint)
+                        end
+                    end
+
+                    if #ScreenPoints > 0 then
+                        local MinX2, MinY2 = math.huge, math.huge
+                        local MaxX2, MaxY2 = -math.huge, -math.huge
+
+                        for _, Point in ipairs(ScreenPoints) do
+                            MinX2 = math.min(MinX2, Point.x)
+                            MinY2 = math.min(MinY2, Point.y)
+                            MaxX2 = math.max(MaxX2, Point.x)
+                            MaxY2 = math.max(MaxY2, Point.y)
+                        end
+
+                        local Width = MaxX2 - MinX2
+                        local Height = MaxY2 - MinY2
+
+                        Box.Position = {MinX2, MinY2}
+                        Box.Size = {Width, Height}
+
+                        Outline.Position = {MinX2 - 1, MinY2 - 1}
+                        Outline.Size = {Width + 2, Height + 2}
+
+                        Name.Position = {
+                            MinX2 + Width/2 - Name.TextBounds.x/2,
+                            MinY2 - 15
+                        }
+
+                        Box.Visible = true
+                        Outline.Visible = true
+                        Name.Visible = true
+                    else
+                        Box.Visible = false
+                        Outline.Visible = false
+                        Name.Visible = false
+                    end
+                end
+            end
+        end
+    end
+end)
+
+spawn(function()
+    local IgnoredModels = {"ThrowingKnife", "ServerStatus", "Lobby", "EffectLoader"}
+    while wait(1) do
+        for _, Child in ipairs(getchildren(Workspace)) do
+            if getclassname(Child) == "Model" and not table.find(IgnoredModels, getname(Child)) then
+                if findfirstchild(Child, "GunDrop") then
+                    AddEntity(Child)
+                end
+            end
+        end
+    end
+end)
