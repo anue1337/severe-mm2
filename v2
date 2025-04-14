@@ -32,7 +32,6 @@ local EXCLUDED_MODELS = {
     ["EffectLoader"] = true
 }
 
-
 local KnifeText = Drawing.new("Text")
 KnifeText.Text = ""
 KnifeText.Visible = false
@@ -57,7 +56,6 @@ GunText.Size = 20
 GunText.Center = true
 GunText.Outline = true
 
-
 local screenWidth = 1920
 local screenHeight = 1080
 local offsetY = 100
@@ -79,7 +77,6 @@ local function GetPlayerRole(Entity)
     local modelName = getname(Entity)
     if EXCLUDED_MODELS[modelName] then return nil end
 
-
     for _, Tool in ipairs(getchildren(Entity)) do
         local toolName = getname(Tool)
         if toolName == WEAPON_CLASSES.SHERIFF then
@@ -88,7 +85,6 @@ local function GetPlayerRole(Entity)
             return "MURDERER", modelName
         end
     end
-
 
     local Players = findfirstchildofclass(Game, "Players")
     if Players then
@@ -165,7 +161,6 @@ spawn(function()
             local Distance = EntityDrawings.Distance
             local IsGunDrop = EntityDrawings.IsGunDrop
 
-
             if IsGunDrop then
                 local GunDropPart = findfirstchild(Entity, "GunDrop")
                 local RootPos = GunDropPart and getposition(GunDropPart)
@@ -180,6 +175,8 @@ spawn(function()
                 else
                     local DistanceToCamera = CalculateDistance(CameraPos, RootPos)
                     Name.Text = "Gun Dropped"
+                    Box.Color = {255, 255, 0}
+                    Name.Color = {255, 255, 0}
                     
                     if DistanceToCamera > Options["Render Distance"] then
                         Box.Visible = false
@@ -222,15 +219,18 @@ spawn(function()
                     local DistanceToPlayer = CalculateDistance(CameraPos, RootPos)
                     local Role, PlayerName = GetPlayerRole(Entity)
                     
-
                     if Role == "MURDERER" then
                         KnifeText.Text = "MURDERER: " .. PlayerName
                         KnifeText.Visible = true
                         hasMurderer = true
+                        Name.Color = {255, 0, 0}
+                        Box.Color = {255, 0, 0}
                     elseif Role == "SHERIFF" then
                         GunText.Text = "SHERIFF: " .. PlayerName
                         GunText.Visible = true
                         hasSheriff = true
+                        Name.Color = {0, 0, 255}
+                        Box.Color = {0, 0, 255}
                     end
                     
                     if not Role then
@@ -250,7 +250,6 @@ spawn(function()
                             Distance.Visible = false
                         else
                             if Head then
-
                                 local MinX, MinY, MinZ = math.huge, math.huge, math.huge
                                 local MaxX, MaxY, MaxZ = -math.huge, -math.huge, -math.huge
 
@@ -323,7 +322,6 @@ spawn(function()
             end
         end
 
-
         CooldownText.Visible = not (hasMurderer or hasSheriff)
         if not hasMurderer then KnifeText.Visible = false end
         if not hasSheriff then GunText.Visible = false end
@@ -332,7 +330,6 @@ end)
 
 spawn(function()
     while wait(1) do
-
         for _, Entity in ipairs(getchildren(Workspace)) do
             if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
                 if findfirstchild(Entity, "GunDrop") then
@@ -340,7 +337,6 @@ spawn(function()
                 end
             end
         end
-
 
         for _, Entity in ipairs(getchildren(Workspace)) do
             if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
