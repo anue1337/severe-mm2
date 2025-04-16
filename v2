@@ -1,5 +1,5 @@
 local ESPEnabled = true
-local TOGGLE_KEY = "XBUTTON2"
+local TOGGLE_KEY = "0x06"
 local keyPressed = false
 
 local Options = {
