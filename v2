@@ -1,5 +1,5 @@
 local ESPEnabled = true
-local TOGGLE_KEY = "MOUSE4"
+local TOGGLE_KEY = "V"
 local keyPressed = false
 
 local Options = {
