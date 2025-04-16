@@ -155,7 +155,7 @@ spawn(function()
         local keys = getpressedkeys()
         local f6Pressed = table.find(keys, TOGGLE_KEY)
         
-        -- Toggle apenas quando a tecla for pressionada inicialmente
+
         if f6Pressed and not keyPressed then
             ESPEnabled = not ESPEnabled
             keyPressed = true
@@ -168,7 +168,7 @@ end)
 spawn(function()
     while wait() do
         if not ESPEnabled then
-            -- Esconde todos os elementos
+
             for _, Entity in pairs(TrackedEntities) do
                 local drawings = Drawings[Entity]
                 if drawings then
@@ -182,7 +182,7 @@ spawn(function()
             GunText.Visible = false
             CooldownText.Visible = false
         else
-            -- Código principal do ESP aqui
+
             local CameraPos = getposition(Camera)
             local hasMurderer = false
             local hasSheriff = false
@@ -367,7 +367,7 @@ end)
 spawn(function()
     while wait(1) do
         if ESPEnabled then
-            -- Adiciona GunDrops
+
             for _, Entity in ipairs(getchildren(Workspace)) do
                 if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
                     if findfirstchild(Entity, "GunDrop") then
@@ -376,7 +376,7 @@ spawn(function()
                 end
             end
 
-            -- Adiciona Players com armas
+
             for _, Entity in ipairs(getchildren(Workspace)) do
                 if getclassname(Entity) == "Model" and not EXCLUDED_MODELS[getname(Entity)] then
                     local Hrp = findfirstchild(Entity, "HumanoidRootPart")
