@@ -1,5 +1,5 @@
 local ESPEnabled = true
-local TOGGLE_KEY = "T"
+local TOGGLE_KEY = "V"
 local keyPressed = false
 
 local Options = {
