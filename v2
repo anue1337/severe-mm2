@@ -1,5 +1,5 @@
 local ESPEnabled = true
-local TOGGLE_KEY = "VK_XBUTTON2"
+local TOGGLE_KEY = "VK_MBUTTON"
 local keyPressed = false
 
 local Options = {
